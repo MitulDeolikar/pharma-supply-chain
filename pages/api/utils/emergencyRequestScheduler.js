@@ -258,8 +258,8 @@ async function notifyPendingRequestsToCMO(connection) {
             body: payload
           });
         } else {
-          const nodeFetch = await import('node-fetch');
-          resp = await nodeFetch.default(url, {
+          
+          resp = await fetch(url, {
             method: 'POST',
             headers: {
               Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
