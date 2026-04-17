@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 // Dynamically import Leaflet to avoid SSR issues
-const MapComponent = dynamic(() => import("./components/DeliveryRouteMap"), {
+const MapComponent = dynamic(() => import("../components/DeliveryRouteMap"), {
   ssr: false,
   loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100">Loading map...</div>
 });
