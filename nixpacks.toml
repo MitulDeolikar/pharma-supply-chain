@@ -4,8 +4,14 @@ nixPkgs = ["nodejs_20", "python311", "python311Packages.pip"]
 [phases.install]
 cmds = [
   "npm install",
-  "pip install -r requirements.txt --break-system-packages"
+  "python3 -m venv /opt/venv && /opt/venv/bin/pip install -r requirements.txt"
 ]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[variables]
+PYTHON_CMD = "/opt/venv/bin/python3"
 
 [start]
 cmd = "node server.js"

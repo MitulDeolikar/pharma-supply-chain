@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const pythonScriptPath = path.join(process.cwd(), 'middleware', 'demandForecast.py');
     
     // Run Python script with pharmacy_id as argument
-    const pythonProcess = spawn('python', [pythonScriptPath, pharmacy_id]);
+    const pythonProcess = spawn(process.env.PYTHON_CMD || 'python3', [pythonScriptPath, pharmacy_id]);
     
     let pythonOutput = '';
     let pythonError = '';
