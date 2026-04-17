@@ -1,0 +1,7 @@
+{
+  "network": "Ganache Local",
+  "requestContractAddress": "0x9561C133DD8580860B6b7E504bC5Aa500f0f06a7",
+  "prescriptionContractAddress": "0xe982E462b094850F12AF94d21D470e21bE9D0E9C",
+  "deployerAddress": "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1",
+  "timestamp": "2026-02-01T16:15:13.697Z"
+}

@@ -1,0 +1,1 @@
+mysql -h mysql-1e95fe7a-bharathnagendrababu-2de0.c.aivencloud.com -u avnadmin -pAVNS_wwRE8MGIRANfcTcc9GU -P 12272 defaultdb --ssl-mode=REQUIRED
