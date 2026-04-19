@@ -37,31 +37,32 @@ function getUserIdFromPayload(payload) {
 }
 
 let _pushRegistered = false;
+let _pushInProgress = false;
 
 async function registerPushNotifications() {
-  if (_pushRegistered) return;
+  if (_pushRegistered || _pushInProgress) return;
+  _pushInProgress = true;
   try {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) { _pushInProgress = false; return; }
 
     const payload = parseJWT(token);
     const user_type = payload?.role;
     const user_id = getUserIdFromPayload(payload);
-    if (!user_type || !user_id) return;
+    if (!user_type || !user_id) { _pushInProgress = false; return; }
 
     const { Capacitor } = await import('@capacitor/core');
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) { _pushInProgress = false; return; }
 
     const { PushNotifications } = await import('@capacitor/push-notifications');
 
     const permission = await PushNotifications.requestPermissions();
-    if (permission.receive !== 'granted') return;
+    if (permission.receive !== 'granted') { _pushInProgress = false; return; }
 
-    _pushRegistered = true;
-
-    await PushNotifications.register();
-
+    // Add listeners BEFORE calling register() to avoid missing the event
     PushNotifications.addListener('registration', async (tokenData) => {
+      _pushRegistered = true;
+      _pushInProgress = false;
       try {
         await fetch('/api/savePushToken', {
           method: 'POST',
@@ -76,10 +77,14 @@ async function registerPushNotifications() {
     PushNotifications.addListener('registrationError', (err) => {
       console.error('Push registration error:', err);
       _pushRegistered = false;
+      _pushInProgress = false;
     });
+
+    await PushNotifications.register();
 
   } catch (e) {
     console.error('Push notification setup error:', e);
+    _pushInProgress = false;
   }
 }
 
@@ -102,6 +107,7 @@ export default function App({ Component, pageProps }) {
 
   const logout = () => {
     _pushRegistered = false;
+    _pushInProgress = false;
     localStorage.removeItem("token");
     router.push("/");
   };
