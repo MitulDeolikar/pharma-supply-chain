@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const mysql = require('mysql2/promise');
 const dbConfig = require('../../../middleware/dbConfig.js');
+const { notifyAllCMOs } = require('../../../lib/fcmService');
 
 // Track last SMS send time for pending requests (send every 15 mins)
 let lastPendingRequestSmsTime = 0;
@@ -279,6 +280,14 @@ async function notifyPendingRequestsToCMO(connection) {
         console.error(`Error sending SMS to CMO:`, smsErr);
       }
     }
+
+    // Push notification to all CMO devices
+    await notifyAllCMOs(
+      connection,
+      '⏳ Pending Emergency Requests',
+      `${pendingRequests.length} emergency request(s) are pending your approval.`,
+      { count: String(pendingRequests.length), type: 'pending_emergency_reminder' }
+    ).catch(e => console.error('FCM scheduler notify CMO error:', e));
 
   } catch (error) {
     console.error('Error in notifyPendingRequestsToCMO:', error);

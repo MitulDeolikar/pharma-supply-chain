@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import dbConfig from '../../middleware/dbConfig';
 const { logActivity } = require('../../lib/auditLogger');
 const { invalidate, invalidatePattern, publish } = require('../../lib/cache');
+const { notifyAllCMOs } = require('../../lib/fcmService');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -154,6 +155,15 @@ export default async function handler(req, res) {
       for (const row of cmos) {
         if (row.contact_number) await sendSms(row.contact_number, message);
       }
+
+      // Push notification to all CMO devices
+      await notifyAllCMOs(
+        connection,
+        '📦 New Demand Request',
+        `Request #${requestId} from ${pharmacyName}: ${itemsSummary}`,
+        { request_id: String(requestId), type: 'demand_created' }
+      ).catch(e => console.error('FCM notify CMO error:', e));
+
     } catch (smsErr) {
       console.error('Error while notifying CMO(s):', smsErr);
     }

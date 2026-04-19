@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import dbConfig from '../../middleware/dbConfig';
 const { logActivity } = require('../../lib/auditLogger');
 const { invalidate, invalidatePattern, publish } = require('../../lib/cache');
+const { notifyUsers } = require('../../lib/fcmService');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -98,6 +99,16 @@ export default async function handler(req, res) {
       }
 
       await connection.commit();
+
+      if (action === 'reject') {
+        await notifyUsers(
+          connection, 'pharmacy', [requestCheck[0].pharmacy_id],
+          '❌ Emergency Request Rejected',
+          `Your emergency request #${requestId} has been rejected by the CMO.${remarks ? ' Reason: ' + remarks : ''}`,
+          { request_id: String(requestId), type: 'emergency_rejected' }
+        ).catch(e => console.error('FCM notify pharmacy error:', e));
+      }
+
       await connection.end();
 
       invalidate('emergency_requests:all');

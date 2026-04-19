@@ -11,9 +11,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.2",
+    "@capacitor/cli": "^7.6.2",
+    "@capacitor/core": "^7.6.2",
+    "@capacitor/push-notifications": "^7.0.6",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.6.1",
     "ethers": "^6.16.0",
+    "firebase-admin": "^12.7.0",
     "ioredis": "^5.10.1",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",

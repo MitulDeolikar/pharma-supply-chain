@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import dbConfig from '../../middleware/dbConfig';
+const { notifyUsers } = require('../../lib/fcmService');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
 
     // Check if request exists and get current status
     const [requestCheck] = await connection.execute(
-      'SELECT request_id, status FROM pharmacy_demand_request WHERE request_id = ?',
+      'SELECT request_id, pharmacy_id, status FROM pharmacy_demand_request WHERE request_id = ?',
       [requestId]
     );
 
@@ -82,6 +83,15 @@ export default async function handler(req, res) {
 
     // Commit transaction
     await connection.commit();
+
+    if (action === 'reject') {
+      await notifyUsers(
+        connection, 'pharmacy', [requestCheck[0].pharmacy_id],
+        '❌ Demand Request Rejected',
+        `Your demand request #${requestId} has been rejected by the CMO.${remarks ? ' Reason: ' + remarks : ''}`,
+        { request_id: String(requestId), type: 'demand_rejected' }
+      ).catch(e => console.error('FCM notify pharmacy error:', e));
+    }
 
     res.status(200).json({
       success: true,

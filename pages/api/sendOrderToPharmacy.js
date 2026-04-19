@@ -3,6 +3,7 @@ import dbConfig from '../../middleware/dbConfig';
 const { recordRequestOnBlockchain, verifyRequestIntegrity, recordTamperingIncident } = require('./blockchainHelper');
 const { logActivity } = require('../../lib/auditLogger');
 const { invalidate, invalidatePattern, publish } = require('../../lib/cache');
+const { notifyUsers } = require('../../lib/fcmService');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -246,6 +247,23 @@ export default async function handler(req, res) {
         console.error(`Error sending SMS to accepting ${isWarehouse ? 'warehouse' : 'pharmacy'}:`, smsErr);
       } finally {
         await smsConnection.end();
+      }
+
+      // Push notification to accepting pharmacy or warehouse
+      const notifyConn = await mysql.createConnection(dbConfig);
+      try {
+        const notifyType = isWarehouse ? 'warehouse' : 'pharmacy';
+        const notifyId = isWarehouse ? acceptingWarehouseId : acceptingPharmacyId;
+        await notifyUsers(
+          notifyConn, notifyType, [notifyId],
+          '✅ Emergency Order Assigned',
+          `Emergency request #${requestId} from ${originName} has been assigned to you. Please prepare the stock.`,
+          { request_id: String(requestId), type: 'emergency_assigned' }
+        );
+      } catch (fcmErr) {
+        console.error('FCM notify pharmacy/warehouse error:', fcmErr);
+      } finally {
+        await notifyConn.end();
       }
 
       invalidate('emergency_requests:all');

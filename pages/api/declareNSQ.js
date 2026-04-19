@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import dbConfig from '../../middleware/dbConfig';
 const { logActivity } = require('../../lib/auditLogger');
+const { notifyUsers } = require('../../lib/fcmService');
 
 // POST /api/declareNSQ
 // Body: { batch_number, medicine_id, cmo_id, message (optional) }
@@ -98,6 +99,22 @@ export default async function handler(req, res) {
     }
 
     await connection.commit();
+
+    // Push notifications to affected pharmacies and warehouses
+    const affectedPharmacyIds = affectedPharmacies.map(p => p.pharmacy_id);
+    const affectedWarehouseIds = affectedWarehouses.map(w => w.warehouse_id);
+    const nsqTitle = '⚠️ NSQ Alert';
+    const nsqBody = `Batch ${batch_number} of ${medicineName} has been declared NSQ. Please quarantine and dispose immediately.`;
+    const nsqData = { alert_id: String(alertId), batch_number, type: 'nsq_declared' };
+
+    if (affectedPharmacyIds.length > 0) {
+      await notifyUsers(connection, 'pharmacy', affectedPharmacyIds, nsqTitle, nsqBody, nsqData)
+        .catch(e => console.error('FCM NSQ pharmacy notify error:', e));
+    }
+    if (affectedWarehouseIds.length > 0) {
+      await notifyUsers(connection, 'warehouse', affectedWarehouseIds, nsqTitle, nsqBody, nsqData)
+        .catch(e => console.error('FCM NSQ warehouse notify error:', e));
+    }
 
     logActivity({
       actor_type: 'cmo', actor_id: cmo_id, actor_name: `CMO #${cmo_id}`,

@@ -3,6 +3,7 @@ import dbConfig from '../../middleware/dbConfig';
 const { recordRequestOnBlockchain } = require('./blockchainHelper');
 const { logActivity } = require('../../lib/auditLogger');
 const { invalidate, invalidatePattern, publish } = require('../../lib/cache');
+const { notifyAllCMOs } = require('../../lib/fcmService');
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -271,6 +272,15 @@ export default async function handler(req, res) {
             for (const cmo of cmos) {
                 await sendSms(cmo.contact_number, smsMessage);
             }
+
+            // Push notification to all CMO devices
+            await notifyAllCMOs(
+                connection,
+                '🚨 Emergency Request',
+                `Request #${request_id} from ${pharmacyName}: ${itemsSummary}`,
+                { request_id: String(request_id), type: 'emergency_created' }
+            ).catch(e => console.error('FCM notify CMO error:', e));
+
         } catch (smsErr) {
             console.error('SMS notification error:', smsErr);
         }

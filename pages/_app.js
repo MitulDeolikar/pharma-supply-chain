@@ -1,11 +1,9 @@
 import "@/styles/globals.css";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 require("dotenv").config();
 
 // ── Global fetch interceptor: auto-attach JWT + API base URL to all /api/ calls ──
-// NEXT_PUBLIC_API_URL is empty in dev (relative URLs work) and set to the
-// Railway deployment URL in production mobile builds.
 if (typeof window !== 'undefined') {
   const _originalFetch = window.fetch;
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -19,9 +17,91 @@ if (typeof window !== 'undefined') {
   };
 }
 
+function parseJWT(token) {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+}
+
+function getUserIdFromPayload(payload) {
+  switch (payload?.role) {
+    case 'cmo':       return payload.cmo_id;
+    case 'pharmacy':  return payload.pharmacy_id;
+    case 'doctor':    return payload.doctor_id;
+    case 'patient':   return payload.opd_id;
+    case 'warehouse': return payload.warehouse_id;
+    default:          return null;
+  }
+}
+
+let _pushRegistered = false;
+
+async function registerPushNotifications() {
+  if (_pushRegistered) return;
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const payload = parseJWT(token);
+    const user_type = payload?.role;
+    const user_id = getUserIdFromPayload(payload);
+    if (!user_type || !user_id) return;
+
+    const { Capacitor } = await import('@capacitor/core');
+    if (!Capacitor.isNativePlatform()) return;
+
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+
+    const permission = await PushNotifications.requestPermissions();
+    if (permission.receive !== 'granted') return;
+
+    _pushRegistered = true;
+
+    await PushNotifications.register();
+
+    PushNotifications.addListener('registration', async (tokenData) => {
+      try {
+        await fetch('/api/savePushToken', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_type, user_id, fcm_token: tokenData.value }),
+        });
+      } catch (e) {
+        console.error('Failed to save push token:', e);
+      }
+    });
+
+    PushNotifications.addListener('registrationError', (err) => {
+      console.error('Push registration error:', err);
+      _pushRegistered = false;
+    });
+
+  } catch (e) {
+    console.error('Push notification setup error:', e);
+  }
+}
+
 export default function App({ Component, pageProps }) {
   const router = useRouter();
+
+  useEffect(() => {
+    registerPushNotifications();
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'token') registerPushNotifications();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    registerPushNotifications();
+  }, [router.pathname]);
+
   const logout = () => {
+    _pushRegistered = false;
     localStorage.removeItem("token");
     router.push("/");
   };
