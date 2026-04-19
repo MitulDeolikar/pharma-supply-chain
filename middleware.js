@@ -28,6 +28,7 @@ const PUBLIC_ROUTES = new Set([
   '/api/razorpay',
   '/api/autoCreateDemandOrders',   // has own cron_key authentication
   '/api/scheduler/init',            // internal scheduler init
+  '/api/savePushToken',             // called by Capacitor FCM registration event
 ]);
 
 // ─── Role-Based Access Control ───────────────────────────────────────────────
